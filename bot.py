@@ -36,13 +36,17 @@ async def scan(interaction: discord.Interaction, url: str):
             upload_ts = get_upload_timestamp(item)
             upload_text = f"<t:{upload_ts}:R>" if upload_ts else "Unbekannt"
             
+            # Versuche, die `currency` zu erhalten, ansonsten setze sie auf 'EUR'
+            currency = item.get("price", {}).get("currency", "EUR")  # Fallback auf EUR, falls keine Währung angegeben
+            price = item.get("price", {}).get("amount", "Unbekannt")  # Preis des Artikels
+
             embed = discord.Embed(
                 title=f"🔥 {item.get('title')}",
                 url=item.get("url", ""),
                 color=0x09b1ba
             )
 
-            embed.add_field(name="💶 Preis", value=f"{item['price']['amount']} {item['price']['currency']}", inline=True)
+            embed.add_field(name="💶 Preis", value=f"{price} {currency}", inline=True)
             embed.add_field(name="🕒 Hochgeladen", value=upload_text, inline=True)
 
             # Sende Embed zu Discord (stelle sicher, dass das asynchron ist)
