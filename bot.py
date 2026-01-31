@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 import os
 import asyncio
+import json
 
 from sniper import VintedSniper, get_upload_timestamp
 
@@ -15,11 +16,29 @@ tree = app_commands.CommandTree(client)
 
 active_snipers = {}  # channel_id → sniper
 
+# Lade URLs und Channel-IDs aus der gespeicherten Datei
+def load_channel_urls():
+    try:
+        with open("channels.json", "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def save_channel_urls(urls):
+    with open("channels.json", "w") as f:
+        json.dump(urls, f)
+
+# Lade gespeicherte URLs
+saved_urls = load_channel_urls()
 
 @tree.command(name="scan", description="Starte Vinted Scan mit URL")
 @app_commands.describe(url="Vinted Such-URL")
 async def scan(interaction: discord.Interaction, url: str):
     channel_id = interaction.channel_id
+
+    # Speichern der URL für den Channel
+    saved_urls[channel_id] = url
+    save_channel_urls(saved_urls)
 
     if channel_id in active_snipers:
         await interaction.response.send_message(
@@ -81,6 +100,5 @@ async def scan(interaction: discord.Interaction, url: str):
 async def on_ready():
     await tree.sync()  # Synchronisiert die Slash-Befehle mit Discord
     print(f"✅ Bot online als {client.user}")
-
 
 client.run(TOKEN)
