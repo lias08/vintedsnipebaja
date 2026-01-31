@@ -1,117 +1,109 @@
 import os
 import discord
 from discord import app_commands
-from sniper import VintedSniper  # dein Sniper-Code aus sniper.py
+from sniper import VintedSniper
+import time
 
-# =========================
-# Variablen aus Railway
-# =========================
-TOKEN = os.getenv("DISCORD_TOKEN")  # Discord Bot Token
-GUILD_ID = int(os.getenv("GUILD_ID"))  # Deine Server ID als Zahl
+TOKEN = os.getenv("DISCORD_TOKEN")
+GUILD_ID = int(os.getenv("GUILD_ID"))
 
-# =========================
-# Discord Client
-# =========================
 intents = discord.Intents.default()
 
 class SniperBot(discord.Client):
     def __init__(self):
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
-        self.active_snipers = {}  # channel_id → VintedSniper
+        self.active = {}
 
     async def setup_hook(self):
         guild = discord.Object(id=GUILD_ID)
-        # Alte Commands löschen (optional, falls noch /start existiert)
-        for cmd in await self.tree.fetch_commands(guild=guild):
-            if cmd.name == "start":
-                await self.tree.delete_command(cmd.id, guild=guild)
-                print("❌ /start gelöscht")
         await self.tree.sync(guild=guild)
-        print("🌍 Slash Commands (GUILD) synchronisiert")
+        print("🌍 Slash Commands synchronisiert")
 
 client = SniperBot()
 
-# =========================
-# Events
-# =========================
 @client.event
 async def on_ready():
     print(f"✅ Bot online als {client.user}")
-    cmds = await client.tree.fetch_commands(guild=discord.Object(id=GUILD_ID))
-    print("🔹 Registrierte Slash Commands:")
-    for c in cmds:
-        print(f"- {c.name}")
 
 # =========================
-# /scan Command
+# /scan
 # =========================
 @client.tree.command(
     name="scan",
-    description="Starte einen Vinted Scan mit einer URL",
+    description="Starte einen Vinted Scan",
     guild=discord.Object(id=GUILD_ID)
 )
 async def scan(interaction: discord.Interaction, url: str):
-    channel_id = interaction.channel_id
+    channel = interaction.channel
 
-    # Prüfen, ob im Channel schon ein Scan läuft
-    if channel_id in client.active_snipers:
-        try:
-            await interaction.response.send_message(
-                "⚠️ In diesem Channel läuft bereits ein Scan.",
-                ephemeral=True
-            )
-        except:
-            pass
+    if channel.id in client.active:
+        await interaction.response.send_message(
+            "⚠️ In diesem Channel läuft bereits ein Scan.",
+            ephemeral=True
+        )
         return
 
-    # Antwort senden
-    try:
-        await interaction.response.send_message(f"🔍 Scan gestartet für: {url}")
-    except:
-        await interaction.channel.send(f"🔍 Scan gestartet für: {url}")
+    await interaction.response.send_message("🔍 Scan gestartet!")
 
-    # Funktion zum Senden von Items in den Channel
-    def send_item(item):
-        client.loop.create_task(
-            interaction.channel.send(
-                f"🔥 **{item.get('title')}**\n{item.get('url')}"
-            )
+    async def send_item(item):
+        price = float(item["price"]["amount"])
+        total = round(price + 0.70 + price * 0.05 + 3.99, 2)
+
+        item_url = item.get("url") or f"https://www.vinted.de/items/{item['id']}"
+        brand = item.get("brand_title", "Keine Marke")
+        size = item.get("size_title", "N/A")
+        condition = item.get("status", "Unbekannt")
+
+        photos = item.get("photos", [])
+        image = photos[0]["url"].replace("/medium/", "/full/") if photos else None
+
+        embed = discord.Embed(
+            title=f"🔥 {item['title']}",
+            url=item_url,
+            color=0x09b1ba,
+            timestamp=discord.utils.utcnow()
         )
 
-    # Sniper starten
-    sniper = VintedSniper(url, send_item)
+        embed.add_field(name="💶 Preis", value=f"{price:.2f} €", inline=True)
+        embed.add_field(name="🚚 Gesamt ca.", value=f"{total:.2f} €", inline=True)
+        embed.add_field(name="📏 Größe", value=size, inline=True)
+        embed.add_field(name="🏷️ Marke", value=brand, inline=True)
+        embed.add_field(name="✨ Zustand", value=str(condition), inline=True)
+        embed.add_field(
+            name="⚡ Aktionen",
+            value=f"[🛒 Kaufen](https://www.vinted.de/transaction/buy/new?item_id={item['id']}) | "
+                  f"[💬 Nachricht]({item_url}#message)",
+            inline=False
+        )
+
+        if image:
+            embed.set_image(url=image)
+
+        await channel.send(embed=embed)
+
+    sniper = VintedSniper(url, lambda item: client.loop.create_task(send_item(item)))
     sniper.start()
-    client.active_snipers[channel_id] = sniper
+    client.active[channel.id] = sniper
 
 # =========================
-# /stop Command
+# /stop
 # =========================
 @client.tree.command(
     name="stop",
-    description="Stoppe den Vinted Scan in diesem Channel",
+    description="Stoppe den Scan",
     guild=discord.Object(id=GUILD_ID)
 )
 async def stop(interaction: discord.Interaction):
-    channel_id = interaction.channel_id
-    sniper = client.active_snipers.pop(channel_id, None)
+    sniper = client.active.pop(interaction.channel.id, None)
 
     if sniper:
         sniper.stop()
-        try:
-            await interaction.response.send_message("🛑 Scan gestoppt.")
-        except:
-            await interaction.channel.send("🛑 Scan gestoppt.")
+        await interaction.response.send_message("🛑 Scan gestoppt.")
     else:
-        try:
-            await interaction.response.send_message(
-                "❌ Kein Scan aktiv in diesem Channel.",
-                ephemeral=True
-            )
-        except:
-            pass
+        await interaction.response.send_message(
+            "❌ Kein Scan aktiv.",
+            ephemeral=True
+        )
 
-# =========================
-# Bot starten
-# =========================
 client.run(TOKEN)
