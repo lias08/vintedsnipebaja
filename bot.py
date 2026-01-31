@@ -40,6 +40,14 @@ async def scan(interaction: discord.Interaction, url: str):
             currency = item.get("price", {}).get("currency", "EUR")  # Fallback auf EUR, falls keine Währung angegeben
             price = item.get("price", {}).get("amount", "Unbekannt")  # Preis des Artikels
 
+            # Versuche, die Größe zu bekommen (falls vorhanden)
+            size = item.get("size_title", "Unbekannt")  # Fallback auf "Unbekannt", falls keine Größe angegeben
+
+            # Versuche, das Bild zu bekommen (falls vorhanden)
+            photos = item.get("photos", [])
+            main_image_url = photos[0]["url"] if photos else None  # Das erste Bild als Hauptbild
+
+            # Erstelle das Embed
             embed = discord.Embed(
                 title=f"🔥 {item.get('title')}",
                 url=item.get("url", ""),
@@ -48,6 +56,11 @@ async def scan(interaction: discord.Interaction, url: str):
 
             embed.add_field(name="💶 Preis", value=f"{price} {currency}", inline=True)
             embed.add_field(name="🕒 Hochgeladen", value=upload_text, inline=True)
+            embed.add_field(name="📏 Größe", value=size, inline=True)  # Hier wird die Größe hinzugefügt
+
+            # Füge das Hauptbild hinzu, wenn es vorhanden ist
+            if main_image_url:
+                embed.set_image(url=main_image_url)
 
             # Sende Embed zu Discord (stelle sicher, dass das asynchron ist)
             asyncio.run_coroutine_threadsafe(
