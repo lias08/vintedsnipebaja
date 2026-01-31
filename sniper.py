@@ -1,6 +1,6 @@
 import tls_client
 import time
-import threading  # <-- Hier den Import von threading hinzufügen
+import threading  # Importiere threading, um die 'start()' Methode verwenden zu können
 import json
 import random
 from datetime import datetime
@@ -24,8 +24,9 @@ class GlobalLimiter:
 global_limiter = GlobalLimiter(min_delay=2)  # 2 Sekunden für schnellere Anfragen
 
 
-class VintedSniper:
+class VintedSniper(threading.Thread):  # Hier erben wir von threading.Thread
     def __init__(self, url, callback):
+        super().__init__(daemon=True)  # Daemonisiert den Thread, damit er im Hintergrund läuft
         self.url = self._convert_url(url)
         self.callback = callback
         self.running = True
@@ -94,7 +95,7 @@ class VintedSniper:
         with open("seen_items.json", "w") as f:
             json.dump(list(self.seen), f)  # Speichern als Liste
 
-    def run(self):
+    def run(self):  # Dies wird aufgerufen, wenn start() ausgeführt wird
         print("🟢 Sniper Loop gestartet")
         print("🔗 API URL:", self.url)
 
