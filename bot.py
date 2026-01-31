@@ -31,52 +31,8 @@ async def scan(interaction: discord.Interaction, url: str):
     await interaction.response.defer(ephemeral=True)
 
     def on_item(item):
-        try:
-            # Versuche, die Währung und den Preis zu erhalten
-            currency = item.get("price", {}).get("currency", "EUR")
-            price = item.get("price", {}).get("amount", "Unbekannt")
-
-            # Versuche, die Größe zu bekommen (falls vorhanden)
-            size = item.get("size_title", "Unbekannt")
-
-            # Zustand des Artikels
-            status = get_clean_status(item)
-
-            # Versuch, das Bild zu bekommen (falls vorhanden)
-            photos = item.get("photos", [])
-            main_image_url = photos[0]["url"] if photos else None
-
-            # Erstelle das Embed
-            embed = discord.Embed(
-                title=f"🔥 {item.get('title')}",
-                url=item.get("url", ""),
-                color=0x09b1ba
-            )
-
-            embed.add_field(name="💶 Preis", value=f"{price} {currency}", inline=True)
-            embed.add_field(name="📏 Größe", value=size, inline=True)
-            embed.add_field(name="✨ Zustand", value=status, inline=True)
-
-            # Füge das Hauptbild hinzu, wenn es vorhanden ist
-            if main_image_url:
-                embed.set_image(url=main_image_url)
-
-            # Erstelle die Buttons für Nachricht schreiben und Favorisieren
-            message_button = discord.ui.Button(style=discord.ButtonStyle.link, label="💬 Nachricht schreiben", url=item.get("url", ""))
-            favorite_button = discord.ui.Button(style=discord.ButtonStyle.link, label="❤️ Favorisieren", url=f"https://www.vinted.de/items/{item['id']}")
-
-            # Kombiniere die Buttons in einer View
-            view = discord.ui.View()
-            view.add_item(message_button)
-            view.add_item(favorite_button)
-
-            # Sende das Embed und die Buttons im richtigen Event Loop
-            asyncio.run_coroutine_threadsafe(
-                interaction.channel.send(embed=embed, view=view), client.loop
-            )
-
-        except Exception as e:
-            print(f"❌ Fehler beim Senden des Items: {e}")
+        # Ändere on_item, damit es nun die asynchrone Funktion verwendet
+        asyncio.run_coroutine_threadsafe(on_item(interaction, item), client.loop)
 
     sniper = VintedSniper(url, on_item)
     active_snipers[channel_id] = sniper
