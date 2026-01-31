@@ -70,7 +70,7 @@ async def scan(interaction: discord.Interaction, url: str):
             view.add_item(message_button)
             view.add_item(favorite_button)
 
-            # Sende Embed zu Discord (stelle sicher, dass das asynchron ist)
+            # Sende das Embed und die Buttons, indem wir die asyncio.run_coroutine_threadsafe Methode verwenden
             asyncio.run_coroutine_threadsafe(
                 interaction.channel.send(embed=embed, view=view), client.loop
             )
