@@ -71,8 +71,9 @@ async def scan(interaction: discord.Interaction, url: str):
             view.add_item(favorite_button)
 
             # Sende das Embed und die Buttons im richtigen Event Loop
-            loop = asyncio.get_event_loop()  # Holen des Event Loops
-            loop.create_task(interaction.channel.send(embed=embed, view=view))
+            asyncio.run_coroutine_threadsafe(
+                interaction.channel.send(embed=embed, view=view), client.loop
+            )
 
         except Exception as e:
             print(f"❌ Fehler beim Senden des Items: {e}")
