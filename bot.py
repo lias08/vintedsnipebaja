@@ -31,15 +31,42 @@ async def scan(interaction: discord.Interaction, url: str):
         upload_ts = get_upload_timestamp(item)
         upload_text = f"<t:{upload_ts}:R>" if upload_ts else "Unbekannt"
 
+        price = item.get("price", {}).get("amount", "N/A")
+        currency = item.get("price", {}).get("currency", "EUR")
+
+        brand = item.get("brand_title", "Keine Marke")
+        size = item.get("size_title", "N/A")
+
+        status_map = {
+            1: "Neu ohne Etikett ✨",
+            2: "Sehr gut 👌",
+            3: "Gut 👍",
+            4: "Zufriedenstellend 🆗",
+            6: "Neu mit Etikett ✨"
+        }
+        status = status_map.get(item.get("status_id"), "Unbekannt")
+
+        photos = item.get("photos", [])
+        image_url = None
+        if photos:
+            image_url = photos[0].get("url", "").replace("/medium/", "/full/")
+
+        item_url = item.get("url") or f"https://www.vinted.de/items/{item.get('id')}"
+
         embed = discord.Embed(
             title=f"🔥 {item.get('title')}",
-            url=item.get("url", ""),
+            url=item_url,
             color=0x09b1ba
         )
 
-        embed.add_field(name="💶 Preis", value=f"{item['price']['amount']} €", inline=True)
+        embed.add_field(name="💶 Preis", value=f"{price} {currency}", inline=True)
+        embed.add_field(name="🏷️ Marke", value=brand, inline=True)
+        embed.add_field(name="📏 Größe", value=size, inline=True)
+        embed.add_field(name="✨ Zustand", value=status, inline=True)
         embed.add_field(name="🕒 Hochgeladen", value=upload_text, inline=True)
-        embed.add_field(name="📏 Größe", value=item.get("size_title", "N/A"), inline=True)
+
+        if image_url:
+            embed.set_image(url=image_url)
 
         embed.set_footer(text="Vinted Sniper • Live")
 
