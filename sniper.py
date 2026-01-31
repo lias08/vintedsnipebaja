@@ -19,27 +19,45 @@ class VintedSniper(threading.Thread):
         )
 
         self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/112.0.0.0 Safari/537.36"
+            ),
             "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Referer": "https://www.vinted.de/",
+            "Origin": "https://www.vinted.de",
         }
+
+        # 🔑 WICHTIG: Cookie holen
+        self._bootstrap_session()
+
+    def _bootstrap_session(self):
+        try:
+            print("🍪 Hole Vinted Cookies …")
+            self.session.get(
+                "https://www.vinted.de",
+                headers=self.headers
+            )
+            print("🍪 Cookies gesetzt")
+        except Exception as e:
+            print("⚠️ Cookie-Fehler:", e)
 
     def stop(self):
         self.running = False
 
     def convert_url(self, url):
-        # Wenn bereits API-URL → direkt nutzen
         if "api/v2/catalog/items" in url:
             return url
 
         base = "https://www.vinted.de/api/v2/catalog/items"
 
-        # Falls keine Parameter vorhanden
         if "?" not in url:
             return f"{base}?order=newest_first&per_page=20"
 
         params = url.split("?", 1)[1]
 
-        # Sicherheit: doppelte order/per_page vermeiden
         if "order=" not in params:
             params += "&order=newest_first"
         if "per_page=" not in params:
@@ -56,28 +74,31 @@ class VintedSniper(threading.Thread):
                 r = self.session.get(self.url, headers=self.headers)
                 print("🌐 API Status:", r.status_code)
 
+                if r.status_code == 401:
+                    print("🔁 Session ungültig – hole Cookies neu")
+                    self._bootstrap_session()
+                    time.sleep(5)
+                    continue
+
                 if r.status_code != 200:
                     time.sleep(10)
                     continue
 
-                data = r.json()
-                items = data.get("items", [])
+                items = r.json().get("items", [])
                 print("📥 Items erhalten:", len(items))
 
-                # 🔒 ERSTER DURCHLAUF → nur merken
+                # 🔒 Initiale Items nur merken
                 if not self.initialized:
                     for item in items:
                         self.seen.add(item["id"])
-
                     self.initialized = True
                     print(f"📦 Initiale Items gespeichert: {len(self.seen)}")
                     time.sleep(10)
                     continue
 
-                # 🚀 NEUE ITEMS
+                # 🚀 Neue Items
                 for item in items:
                     item_id = item["id"]
-
                     if item_id in self.seen:
                         continue
 
@@ -85,7 +106,6 @@ class VintedSniper(threading.Thread):
                     print("🔥 Neues Item erkannt:", item.get("title"))
                     self.callback(item)
 
-                # Speicher begrenzen
                 if len(self.seen) > 500:
                     self.seen = set(list(self.seen)[-300:])
 
