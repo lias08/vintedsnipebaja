@@ -4,10 +4,9 @@ import threading
 import random
 from datetime import datetime
 
-
 # 🌍 GLOBAL RATE LIMITER (für alle Sniper)
 class GlobalLimiter:
-    def __init__(self, min_delay=6):
+    def __init__(self, min_delay=7):
         self.lock = threading.Lock()
         self.last = 0
         self.min_delay = min_delay
@@ -21,7 +20,7 @@ class GlobalLimiter:
             self.last = time.time()
 
 
-global_limiter = GlobalLimiter(min_delay=6)
+global_limiter = GlobalLimiter(min_delay=7)
 
 
 class VintedSniper(threading.Thread):
@@ -89,6 +88,7 @@ class VintedSniper(threading.Thread):
 
         burst = 0
         last_top_id = None
+        consecutive_403s = 0
 
         while self.running:
             try:
@@ -98,12 +98,16 @@ class VintedSniper(threading.Thread):
                 print("🌐 API Status:", r.status_code)
 
                 if r.status_code == 403:
-                    print("⛔ 403 Block – Cooldown 90s")
-                    time.sleep(90)
+                    consecutive_403s += 1
+                    print(f"⛔ 403 Block – Cooldown {consecutive_403s * 10}s")
+                    time.sleep(consecutive_403s * 10)
+                    if consecutive_403s > 3:
+                        print("🔴 Viele 403s – längere Pause!")
+                        time.sleep(30)
                     continue
 
                 if r.status_code != 200:
-                    time.sleep(20)
+                    time.sleep(10)
                     continue
 
                 items = r.json().get("items", [])
@@ -132,35 +136,8 @@ class VintedSniper(threading.Thread):
                     self.callback(item)
 
                 if top_id != last_top_id:
-                    delay = random.randint(6, 8)
+                    delay = random.randint(6, 7)  # Schnelle Burst-Scans
                     burst += 1
                 else:
-                    delay = random.randint(15, 22)
-                    burst = 0
-
-                last_top_id = top_id
-
-                if burst >= 5:
-                    print("🧊 Burst Cooldown 60s")
-                    time.sleep(60)
-                    burst = 0
-                else:
-                    time.sleep(delay)
-
-            except Exception as e:
-                print("❌ Sniper Fehler:", e)
-                time.sleep(20)
-
-
-# 🕒 Upload-Zeit Helper
-def get_upload_timestamp(item):
-    if item.get("created_at_ts"):
-        return int(item["created_at_ts"])
-
-    if item.get("created_at"):
-        dt = datetime.fromisoformat(
-            item["created_at"].replace("Z", "+00:00")
-        )
-        return int(dt.timestamp())
-
-    return None
+                    delay = random.randint(15, 20)  # langsamer bei wenig Bewegung
+                    bur
