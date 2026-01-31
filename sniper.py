@@ -1,5 +1,6 @@
 import tls_client
 import time
+import threading  # <-- Hier den Import von threading hinzufügen
 import json
 import random
 from datetime import datetime
@@ -7,7 +8,7 @@ from datetime import datetime
 # 🌍 GLOBAL RATE LIMITER (für alle Sniper)
 class GlobalLimiter:
     def __init__(self, min_delay=2):  # Reduziert auf 2 Sekunden
-        self.lock = threading.Lock()
+        self.lock = threading.Lock()  # Verwendet Lock von threading
         self.last = 0
         self.min_delay = min_delay
 
