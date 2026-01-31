@@ -2,11 +2,12 @@ import tls_client
 import time
 import threading
 import random
+import json
 from datetime import datetime
 
 # 🌍 GLOBAL RATE LIMITER (für alle Sniper)
 class GlobalLimiter:
-    def __init__(self, min_delay=7):
+    def __init__(self, min_delay=5):  # Verringert auf 5 Sekunden
         self.lock = threading.Lock()
         self.last = 0
         self.min_delay = min_delay
@@ -20,7 +21,7 @@ class GlobalLimiter:
             self.last = time.time()
 
 
-global_limiter = GlobalLimiter(min_delay=7)
+global_limiter = GlobalLimiter(min_delay=5)
 
 
 class VintedSniper(threading.Thread):
@@ -31,7 +32,7 @@ class VintedSniper(threading.Thread):
         self.callback = callback
         self.running = True
 
-        self.seen = set()
+        self.seen = self.load_seen_items()  # Lade die gesehenen Items aus der Datei
         self.initialized = False
 
         self.session = tls_client.Session(
@@ -81,6 +82,19 @@ class VintedSniper(threading.Thread):
             params += "&per_page=20"
 
         return f"{base}?{params}"
+
+    # Lade die bereits gesehenen Artikel-IDs aus einer JSON-Datei
+    def load_seen_items(self):
+        try:
+            with open("seen_items.json", "r") as f:
+                return set(json.load(f))  # Lade als Set von IDs
+        except FileNotFoundError:
+            return set()  # Falls die Datei nicht existiert, starte mit einem leeren Set
+
+    # Speichern der gesehenen Artikel-IDs in einer JSON-Datei
+    def save_seen_items(self):
+        with open("seen_items.json", "w") as f:
+            json.dump(list(self.seen), f)  # Speichern als Liste
 
     def run(self):
         print("🟢 Sniper Loop gestartet")
@@ -150,6 +164,9 @@ class VintedSniper(threading.Thread):
                     burst = 0
                 else:
                     time.sleep(delay)
+
+                # Speichere die IDs nach jedem Scan
+                self.save_seen_items()
 
             except Exception as e:
                 print("❌ Sniper Fehler:", e)
