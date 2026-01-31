@@ -2,6 +2,7 @@ import tls_client
 import time
 import threading
 import random
+import json  # <--- Hier importieren wir das json-Modul
 from datetime import datetime
 
 # 🌍 GLOBAL RATE LIMITER (für alle Sniper)
