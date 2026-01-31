@@ -18,15 +18,16 @@ class VintedSniper(threading.Thread):
             "Accept": "application/json"
         }
 
-    def stop(self):
-        self.running = False
+   def convert_url(self, url):
+    if "api/v2/catalog/items" in url:
+        return url
 
-    def convert_url(self, url):
-        if "api/v2/catalog/items" in url:
-            return url
-        base = "https://www.vinted.de/api/v2/catalog/items?"
-        params = url.split("?")[-1]
-        return base + params + "&order=newest_first&per_page=20"
+    if "?" not in url:
+        return "https://www.vinted.de/api/v2/catalog/items?order=newest_first&per_page=20"
+
+    params = url.split("?", 1)[1]
+    return f"https://www.vinted.de/api/v2/catalog/items?{params}&order=newest_first&per_page=20"
+
 
     def run(self):
         print("🟢 Sniper Loop gestartet")
