@@ -82,11 +82,13 @@ async def scan(interaction: discord.Interaction, url: str):
 # /stop
 # =========================
 @client.tree.command(
-    name="stop",
-    description="Stoppe den Scan in diesem Channel",
+    name="scan",
+    description="Starte einen Vinted Scan mit URL",
     guild=discord.Object(id=GUILD_ID)
 )
-async def stop(interaction: discord.Interaction):
+async def scan(interaction: discord.Interaction, url: str):
+    await interaction.response.send_message(f"🔍 Scan gestartet für: {url}")
+:
 
     channel_id = interaction.channel_id
     sniper = client.active_snipers.pop(channel_id, None)
