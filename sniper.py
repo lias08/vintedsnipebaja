@@ -24,5 +24,5 @@ class VintedSniper(threading.Thread):
                             self.seen.add(item["id"])
                             self.send(item)
                 time.sleep(10)
-            except Exception:
+            except:
                 time.sleep(10)
