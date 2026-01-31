@@ -8,12 +8,11 @@ class VintedSniper(threading.Thread):
         self.url = self.convert_url(url)
         self.callback = callback
         self.running = True
+
         self.seen = set()
+        self.initialized = False  # 🔥 DAS IST DER KEY
 
-        self.session = tls_client.Session(
-            client_identifier="chrome_112"
-        )
-
+        self.session = tls_client.Session(client_identifier="chrome_112")
         self.headers = {
             "User-Agent": "Mozilla/5.0",
             "Accept": "application/json"
@@ -41,22 +40,28 @@ class VintedSniper(threading.Thread):
 
                 items = r.json().get("items", [])
 
+                # 🔒 ERSTER DURCHLAUF: nur merken
+                if not self.initialized:
+                    for item in items:
+                        self.seen.add(item["id"])
+                    self.initialized = True
+                    print(f"📦 Initiale Items gespeichert: {len(self.seen)}")
+                    time.sleep(10)
+                    continue
+
+                # 🚀 AB JETZT: echte Sniper-Logik
                 for item in items:
                     item_id = item["id"]
                     if item_id in self.seen:
                         continue
 
                     self.seen.add(item_id)
-
-                    # Erstes Item nur merken (kein Spam beim Start)
-                    if len(self.seen) == 1:
-                        continue
-
-                    print("🔥 Neues Item:", item.get("title"))
+                    print("🔥 Neues Item erkannt:", item.get("title"))
                     self.callback(item)
 
-                if len(self.seen) > 300:
-                    self.seen = set(list(self.seen)[-150:])
+                # Speicher klein halten
+                if len(self.seen) > 500:
+                    self.seen = set(list(self.seen)[-300:])
 
                 time.sleep(10)
 
