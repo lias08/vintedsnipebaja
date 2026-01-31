@@ -53,8 +53,8 @@ async def start(interaction: discord.Interaction, url: str):
         )
         return
 
-    # SOFORT antworten → verhindert 404
-    await interaction.response.defer()
+    # Sofort Antwort, dann Sniper im Hintergrund
+    await interaction.response.send_message("🎯 Sniper wird gestartet!")
 
     def send_item(item):
         client.loop.create_task(
@@ -63,11 +63,16 @@ async def start(interaction: discord.Interaction, url: str):
             )
         )
 
+    # Sniper in Thread starten → blockiert Discord nicht
     sniper = VintedSniper(convert_url(url), send_item)
     sniper.start()
     client.active_snipers[channel_id] = sniper
 
-    await interaction.followup.send("🎯 Sniper erfolgreich gestartet!")
+    # Optionale Folge-Nachricht, wenn Sniper gestartet ist
+    client.loop.create_task(
+        interaction.channel.send("✅ Sniper erfolgreich gestartet und läuft im Hintergrund!")
+    )
+
 
 # =========================
 # /stop
