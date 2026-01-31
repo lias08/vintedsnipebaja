@@ -4,7 +4,7 @@ import threading
 
 class VintedSniper(threading.Thread):
     def __init__(self, api_url, send_func):
-        super().__init__()
+        super().__init__(daemon=True)
         self.api_url = api_url
         self.send = send_func
         self.running = True
@@ -24,5 +24,5 @@ class VintedSniper(threading.Thread):
                             self.seen.add(item["id"])
                             self.send(item)
                 time.sleep(10)
-            except:
+            except Exception:
                 time.sleep(10)
