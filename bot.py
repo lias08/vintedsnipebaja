@@ -1,19 +1,3 @@
-import discord
-from discord import app_commands
-import os
-import asyncio
-
-from sniper import VintedSniper, get_upload_timestamp
-
-TOKEN = os.getenv("DISCORD_TOKEN")  # Dein Discord-Token aus der Umgebung
-
-intents = discord.Intents.default()
-client = discord.Client(intents=intents)
-tree = app_commands.CommandTree(client)
-
-active_snipers = {}  # channel_id → sniper
-
-
 @tree.command(name="scan", description="Starte Vinted Scan mit URL")
 @app_commands.describe(url="Vinted Such-URL")
 async def scan(interaction: discord.Interaction, url: str):
@@ -49,15 +33,6 @@ async def scan(interaction: discord.Interaction, url: str):
 
     sniper = VintedSniper(url, on_item)
     active_snipers[channel_id] = sniper
-    sniper.start()
+    await sniper.run()  # Wir starten den Sniper asynchron
 
     await interaction.followup.send("🟢 Sniper gestartet!", ephemeral=True)
-
-
-@client.event
-async def on_ready():
-    await tree.sync()
-    print(f"✅ Bot online als {client.user}")
-
-
-client.run(TOKEN)
