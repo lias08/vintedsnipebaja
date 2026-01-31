@@ -2,12 +2,11 @@ import tls_client
 import time
 import threading
 import random
-import json
 from datetime import datetime
 
 # 🌍 GLOBAL RATE LIMITER (für alle Sniper)
 class GlobalLimiter:
-    def __init__(self, min_delay=5):  # Verringert auf 5 Sekunden
+    def __init__(self, min_delay=2):  # Reduziert auf 2 Sekunden
         self.lock = threading.Lock()
         self.last = 0
         self.min_delay = min_delay
@@ -21,7 +20,7 @@ class GlobalLimiter:
             self.last = time.time()
 
 
-global_limiter = GlobalLimiter(min_delay=5)
+global_limiter = GlobalLimiter(min_delay=2)  # 2 Sekunden für schnellere Anfragen
 
 
 class VintedSniper(threading.Thread):
@@ -128,7 +127,7 @@ class VintedSniper(threading.Thread):
                 print("📥 Items erhalten:", len(items))
 
                 if not items:
-                    time.sleep(20)
+                    time.sleep(10)  # Kürzere Wartezeit bei keinem neuen Artikel
                     continue
 
                 top_id = items[0]["id"]
@@ -139,7 +138,7 @@ class VintedSniper(threading.Thread):
                     self.initialized = True
                     last_top_id = top_id
                     print(f"📦 Initiale Items gespeichert: {len(self.seen)}")
-                    time.sleep(15)
+                    time.sleep(5)
                     continue
 
                 for item in items:
@@ -153,7 +152,7 @@ class VintedSniper(threading.Thread):
                     delay = random.randint(6, 7)  # Schnelle Burst-Scans
                     burst += 1
                 else:
-                    delay = random.randint(15, 20)  # langsamer bei wenig Bewegung
+                    delay = random.randint(12, 15)  # langsamer bei wenig Bewegung
                     burst = 0
 
                 last_top_id = top_id
@@ -170,7 +169,7 @@ class VintedSniper(threading.Thread):
 
             except Exception as e:
                 print("❌ Sniper Fehler:", e)
-                time.sleep(20)
+                time.sleep(10)  # Kurze Pause bei Fehlern
 
 
 # 🕒 Upload-Zeit Helper
