@@ -31,7 +31,7 @@ async def scan(interaction: discord.Interaction, url: str):
     await interaction.response.defer(ephemeral=True)
 
     def on_item(item):
-        # Ändere on_item, damit es nun die asynchrone Funktion verwendet
+        # Rufe on_item mit der Interaktion und dem Artikel auf
         asyncio.run_coroutine_threadsafe(on_item(interaction, item), client.loop)
 
     sniper = VintedSniper(url, on_item)
