@@ -1,33 +1,31 @@
 import tls_client
 import time
-import threading
+import asyncio
 import random
-import json  # <--- Hier importieren wir das json-Modul
+import json
 from datetime import datetime
 
 # 🌍 GLOBAL RATE LIMITER (für alle Sniper)
 class GlobalLimiter:
     def __init__(self, min_delay=2):  # Reduziert auf 2 Sekunden
-        self.lock = threading.Lock()
+        self.lock = asyncio.Lock()
         self.last = 0
         self.min_delay = min_delay
 
-    def wait(self):
-        with self.lock:
+    async def wait(self):
+        async with self.lock:
             now = time.time()
             diff = now - self.last
             if diff < self.min_delay:
-                time.sleep(self.min_delay - diff)
+                await asyncio.sleep(self.min_delay - diff)
             self.last = time.time()
 
 
 global_limiter = GlobalLimiter(min_delay=2)  # 2 Sekunden für schnellere Anfragen
 
 
-class VintedSniper(threading.Thread):
+class VintedSniper:
     def __init__(self, url, callback):
-        super().__init__(daemon=True)
-
         self.url = self._convert_url(url)
         self.callback = callback
         self.running = True
@@ -96,7 +94,7 @@ class VintedSniper(threading.Thread):
         with open("seen_items.json", "w") as f:
             json.dump(list(self.seen), f)  # Speichern als Liste
 
-    def run(self):
+    async def run(self):
         print("🟢 Sniper Loop gestartet")
         print("🔗 API URL:", self.url)
 
@@ -106,7 +104,7 @@ class VintedSniper(threading.Thread):
 
         while self.running:
             try:
-                global_limiter.wait()
+                await global_limiter.wait()
 
                 r = self.session.get(self.url, headers=self.headers)
                 print("🌐 API Status:", r.status_code)
@@ -114,21 +112,21 @@ class VintedSniper(threading.Thread):
                 if r.status_code == 403:
                     consecutive_403s += 1
                     print(f"⛔ 403 Block – Cooldown {consecutive_403s * 10}s")
-                    time.sleep(consecutive_403s * 10)
+                    await asyncio.sleep(consecutive_403s * 10)
                     if consecutive_403s > 3:
                         print("🔴 Viele 403s – längere Pause!")
-                        time.sleep(30)
+                        await asyncio.sleep(30)
                     continue
 
                 if r.status_code != 200:
-                    time.sleep(10)
+                    await asyncio.sleep(10)
                     continue
 
                 items = r.json().get("items", [])
                 print("📥 Items erhalten:", len(items))
 
                 if not items:
-                    time.sleep(10)  # Kürzere Wartezeit bei keinem neuen Artikel
+                    await asyncio.sleep(10)  # Kürzere Wartezeit bei keinem neuen Artikel
                     continue
 
                 top_id = items[0]["id"]
@@ -139,7 +137,7 @@ class VintedSniper(threading.Thread):
                     self.initialized = True
                     last_top_id = top_id
                     print(f"📦 Initiale Items gespeichert: {len(self.seen)}")
-                    time.sleep(5)
+                    await asyncio.sleep(5)
                     continue
 
                 for item in items:
@@ -147,7 +145,7 @@ class VintedSniper(threading.Thread):
                         continue
                     self.seen.add(item["id"])
                     print("🔥 Neues Item:", item.get("title"))
-                    self.callback(item)
+                    await self.callback(item)
 
                 if top_id != last_top_id:
                     delay = random.randint(6, 7)  # Schnelle Burst-Scans
@@ -160,17 +158,17 @@ class VintedSniper(threading.Thread):
 
                 if burst >= 5:
                     print("🧊 Burst Cooldown 30s")
-                    time.sleep(30)
+                    await asyncio.sleep(30)
                     burst = 0
                 else:
-                    time.sleep(delay)
+                    await asyncio.sleep(delay)
 
                 # Speichere die IDs nach jedem Scan
                 self.save_seen_items()
 
             except Exception as e:
                 print("❌ Sniper Fehler:", e)
-                time.sleep(10)  # Kurze Pause bei Fehlern
+                await asyncio.sleep(10)  # Kurze Pause bei Fehlern
 
 
 # 🕒 Upload-Zeit Helper
