@@ -50,9 +50,9 @@ async def scan(interaction: discord.Interaction, url: str):
             embed.add_field(name="🕒 Hochgeladen", value=upload_text, inline=True)
 
             # Sende Embed zu Discord (stelle sicher, dass das asynchron ist)
-            asyncio.create_task(
-                interaction.channel.send(embed=embed)
-            )
+            asyncio.run_coroutine_threadsafe(
+                interaction.channel.send(embed=embed), client.loop
+            )  # Wir verwenden asyncio.run_coroutine_threadsafe(), um den Event Loop korrekt zu verwenden
 
         except Exception as e:
             print(f"❌ Fehler beim Senden des Items: {e}")
