@@ -28,7 +28,7 @@ class VintedSniper(threading.Thread):
     def __init__(self, url, callback):
         super().__init__(daemon=True)
 
-        self.url = self.convert_url(url)
+        self.url = self._convert_url(url)
         self.callback = callback
         self.running = True
 
@@ -65,7 +65,7 @@ class VintedSniper(threading.Thread):
     def stop(self):
         self.running = False
 
-    def convert_url(self, url):
+    def _convert_url(self, url):
         if "api/v2/catalog/items" in url:
             return url
 
