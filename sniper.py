@@ -1,28 +1,4 @@
-import tls_client
-import time
 import asyncio
-import random
-import json
-from datetime import datetime
-
-# 🌍 GLOBAL RATE LIMITER (für alle Sniper)
-class GlobalLimiter:
-    def __init__(self, min_delay=2):  # Reduziert auf 2 Sekunden
-        self.lock = asyncio.Lock()
-        self.last = 0
-        self.min_delay = min_delay
-
-    async def wait(self):
-        async with self.lock:
-            now = time.time()
-            diff = now - self.last
-            if diff < self.min_delay:
-                await asyncio.sleep(self.min_delay - diff)
-            self.last = time.time()
-
-
-global_limiter = GlobalLimiter(min_delay=2)  # 2 Sekunden für schnellere Anfragen
-
 
 class VintedSniper:
     def __init__(self, url, callback):
@@ -51,53 +27,8 @@ class VintedSniper:
 
         self._bootstrap_session()
 
-    # 🍪 Cookies holen (Pflicht)
-    def _bootstrap_session(self):
-        try:
-            print("🍪 Hole Vinted Cookies …")
-            self.session.get("https://www.vinted.de", headers=self.headers)
-            print("🍪 Cookies gesetzt")
-        except Exception as e:
-            print("⚠️ Cookie Fehler:", e)
-
-    def stop(self):
-        self.running = False
-
-    def _convert_url(self, url):
-        if "api/v2/catalog/items" in url:
-            return url
-
-        base = "https://www.vinted.de/api/v2/catalog/items"
-
-        if "?" not in url:
-            return f"{base}?order=newest_first&per_page=20"
-
-        params = url.split("?", 1)[1]
-
-        if "order=" not in params:
-            params += "&order=newest_first"
-        if "per_page=" not in params:
-            params += "&per_page=20"
-
-        return f"{base}?{params}"
-
-    # Lade die bereits gesehenen Artikel-IDs aus einer JSON-Datei
-    def load_seen_items(self):
-        try:
-            with open("seen_items.json", "r") as f:
-                return set(json.load(f))  # Lade als Set von IDs
-        except FileNotFoundError:
-            return set()  # Falls die Datei nicht existiert, starte mit einem leeren Set
-
-    # Speichern der gesehenen Artikel-IDs in einer JSON-Datei
-    def save_seen_items(self):
-        with open("seen_items.json", "w") as f:
-            json.dump(list(self.seen), f)  # Speichern als Liste
-
-    async def run(self):
+    async def run(self):  # Wir machen die Methode asynchron
         print("🟢 Sniper Loop gestartet")
-        print("🔗 API URL:", self.url)
-
         burst = 0
         last_top_id = None
         consecutive_403s = 0
@@ -169,17 +100,3 @@ class VintedSniper:
             except Exception as e:
                 print("❌ Sniper Fehler:", e)
                 await asyncio.sleep(10)  # Kurze Pause bei Fehlern
-
-
-# 🕒 Upload-Zeit Helper
-def get_upload_timestamp(item):
-    if item.get("created_at_ts"):
-        return int(item["created_at_ts"])
-
-    if item.get("created_at"):
-        dt = datetime.fromisoformat(
-            item["created_at"].replace("Z", "+00:00")
-        )
-        return int(dt.timestamp())
-
-    return None
