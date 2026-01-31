@@ -154,7 +154,7 @@ class VintedSniper(threading.Thread):
                     delay = random.randint(6, 7)
                     burst += 1
                 else:
-                    delay = random.randint(10, 12)  # Anpassung für schnellere Durchläufe
+                    delay = random.randint(10, 12)
                     burst = 0
 
                 last_top_id = top_id
