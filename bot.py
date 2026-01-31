@@ -5,12 +5,18 @@ from sniper import VintedSniper
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
+# =========================
+# URL → API URL
+# =========================
 def convert_url(url: str) -> str:
     if "api/v2/catalog/items" in url:
         return url
     base = "https://www.vinted.de/api/v2/catalog/items?"
     return base + url.split("?", 1)[1]
 
+# =========================
+# DISCORD CLIENT
+# =========================
 intents = discord.Intents.default()
 
 class SniperBot(discord.Client):
@@ -20,7 +26,6 @@ class SniperBot(discord.Client):
         self.active_snipers = {}
 
     async def setup_hook(self):
-        # Slash Commands global registrieren
         await self.tree.sync()
         print("🌍 Slash Commands synchronisiert")
 
@@ -31,11 +36,11 @@ async def on_ready():
     print(f"✅ Bot online als {client.user}")
 
 # =========================
-# /start COMMAND
+# /start
 # =========================
 @client.tree.command(
     name="start",
-    description="Starte einen Vinted Sniper für diese URL"
+    description="Starte einen Vinted Sniper mit einer URL"
 )
 async def start(interaction: discord.Interaction, url: str):
 
@@ -48,7 +53,8 @@ async def start(interaction: discord.Interaction, url: str):
         )
         return
 
-    await interaction.response.send_message("🎯 Sniper wird gestartet...")
+    # SOFORT antworten → verhindert 404
+    await interaction.response.defer()
 
     def send_item(item):
         client.loop.create_task(
@@ -61,9 +67,10 @@ async def start(interaction: discord.Interaction, url: str):
     sniper.start()
     client.active_snipers[channel_id] = sniper
 
+    await interaction.followup.send("🎯 Sniper erfolgreich gestartet!")
 
 # =========================
-# /stop COMMAND
+# /stop
 # =========================
 @client.tree.command(
     name="stop",
@@ -84,6 +91,6 @@ async def stop(interaction: discord.Interaction):
         )
 
 # =========================
-# START BOT
+# BOT START
 # =========================
 client.run(TOKEN)
