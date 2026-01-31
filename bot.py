@@ -37,7 +37,15 @@ client = SniperBot()
 
 @client.event
 async def on_ready():
-    print(f"✅ Bot online als {client.user}")
+    guild = discord.Object(id=GUILD_ID)
+    # Alte Commands löschen
+    for cmd in await client.tree.fetch_commands(guild=guild):
+        if cmd.name == "start":
+            await client.tree.delete_command(cmd.id, guild=guild)
+            print(f"❌ /start gelöscht")
+    await client.tree.sync(guild=guild)
+    print("🌍 Commands synchronisiert")
+
 
 # =========================
 # /scan
