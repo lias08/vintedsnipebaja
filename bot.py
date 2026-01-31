@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 import os
 import asyncio
+import json
 
 from sniper import VintedSniper, get_upload_timestamp, get_clean_status
 
@@ -31,19 +32,21 @@ async def scan(interaction: discord.Interaction, url: str):
 
     def on_item(item):
         try:
-            upload_ts = get_upload_timestamp(item)
-            upload_text = f"<t:{upload_ts}:R>" if upload_ts else "Unbekannt"
-
+            # Versuche, die Währung und den Preis zu erhalten
             currency = item.get("price", {}).get("currency", "EUR")
             price = item.get("price", {}).get("amount", "Unbekannt")
 
+            # Versuche, die Größe zu bekommen (falls vorhanden)
             size = item.get("size_title", "Unbekannt")
-            photos = item.get("photos", [])
-            main_image_url = photos[0]["url"] if photos else None
 
             # Zustand des Artikels
             status = get_clean_status(item)
 
+            # Versuch, das Bild zu bekommen (falls vorhanden)
+            photos = item.get("photos", [])
+            main_image_url = photos[0]["url"] if photos else None
+
+            # Erstelle das Embed
             embed = discord.Embed(
                 title=f"🔥 {item.get('title')}",
                 url=item.get("url", ""),
@@ -51,15 +54,25 @@ async def scan(interaction: discord.Interaction, url: str):
             )
 
             embed.add_field(name="💶 Preis", value=f"{price} {currency}", inline=True)
-            embed.add_field(name="🕒 Hochgeladen", value=upload_text, inline=True)
             embed.add_field(name="📏 Größe", value=size, inline=True)
-            embed.add_field(name="✨ Zustand", value=status, inline=True)  # Zustand hinzugefügt
+            embed.add_field(name="✨ Zustand", value=status, inline=True)
 
+            # Füge das Hauptbild hinzu, wenn es vorhanden ist
             if main_image_url:
                 embed.set_image(url=main_image_url)
 
+            # Erstelle die Buttons für Nachricht schreiben und Favorisieren
+            message_button = discord.ui.Button(style=discord.ButtonStyle.link, label="💬 Nachricht schreiben", url=item.get("url", ""))
+            favorite_button = discord.ui.Button(style=discord.ButtonStyle.link, label="❤️ Favorisieren", url=f"https://www.vinted.de/items/{item['id']}")
+
+            # Kombiniere die Buttons in einer View
+            view = discord.ui.View()
+            view.add_item(message_button)
+            view.add_item(favorite_button)
+
+            # Sende Embed zu Discord (stelle sicher, dass das asynchron ist)
             asyncio.run_coroutine_threadsafe(
-                interaction.channel.send(embed=embed), client.loop
+                interaction.channel.send(embed=embed, view=view), client.loop
             )
 
         except Exception as e:
