@@ -1,116 +1,73 @@
-import tls_client
 import time
-import threading
+import random
 
+def run(self):
+    print("🟢 Sniper Loop gestartet")
+    print("🔗 API URL:", self.url)
 
-class VintedSniper(threading.Thread):
-    def __init__(self, url, callback):
-        super().__init__(daemon=True)
+    burst = 0
+    last_top_id = None
 
-        self.url = self.convert_url(url)
-        self.callback = callback
-        self.running = True
-
-        self.seen = set()
-        self.initialized = False
-
-        self.session = tls_client.Session(
-            client_identifier="chrome_112"
-        )
-
-        self.headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/112.0.0.0 Safari/537.36"
-            ),
-            "Accept": "application/json, text/plain, */*",
-            "Accept-Language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Referer": "https://www.vinted.de/",
-            "Origin": "https://www.vinted.de",
-        }
-
-        # 🔑 WICHTIG: Cookie holen
-        self._bootstrap_session()
-
-    def _bootstrap_session(self):
+    while self.running:
         try:
-            print("🍪 Hole Vinted Cookies …")
-            self.session.get(
-                "https://www.vinted.de",
-                headers=self.headers
-            )
-            print("🍪 Cookies gesetzt")
-        except Exception as e:
-            print("⚠️ Cookie-Fehler:", e)
+            r = self.session.get(self.url, headers=self.headers)
+            print("🌐 API Status:", r.status_code)
 
-    def stop(self):
-        self.running = False
+            # ⛔ 403 = Cooldown, NICHT neu starten
+            if r.status_code == 403:
+                print("⛔ 403 Block – Cooldown 90s")
+                time.sleep(90)
+                continue
 
-    def convert_url(self, url):
-        if "api/v2/catalog/items" in url:
-            return url
+            if r.status_code != 200:
+                time.sleep(20)
+                continue
 
-        base = "https://www.vinted.de/api/v2/catalog/items"
+            items = r.json().get("items", [])
+            print("📥 Items erhalten:", len(items))
 
-        if "?" not in url:
-            return f"{base}?order=newest_first&per_page=20"
+            if not items:
+                time.sleep(20)
+                continue
 
-        params = url.split("?", 1)[1]
+            top_id = items[0]["id"]
 
-        if "order=" not in params:
-            params += "&order=newest_first"
-        if "per_page=" not in params:
-            params += "&per_page=20"
-
-        return f"{base}?{params}"
-
-    def run(self):
-        print("🟢 Sniper Loop gestartet")
-        print("🔗 API URL:", self.url)
-
-        while self.running:
-            try:
-                r = self.session.get(self.url, headers=self.headers)
-                print("🌐 API Status:", r.status_code)
-
-                if r.status_code == 401:
-                    print("🔁 Session ungültig – hole Cookies neu")
-                    self._bootstrap_session()
-                    time.sleep(5)
-                    continue
-
-                if r.status_code != 200:
-                    time.sleep(10)
-                    continue
-
-                items = r.json().get("items", [])
-                print("📥 Items erhalten:", len(items))
-
-                # 🔒 Initiale Items nur merken
-                if not self.initialized:
-                    for item in items:
-                        self.seen.add(item["id"])
-                    self.initialized = True
-                    print(f"📦 Initiale Items gespeichert: {len(self.seen)}")
-                    time.sleep(10)
-                    continue
-
-                # 🚀 Neue Items
+            # 📦 Initiale Items
+            if not self.initialized:
                 for item in items:
-                    item_id = item["id"]
-                    if item_id in self.seen:
-                        continue
+                    self.seen.add(item["id"])
+                self.initialized = True
+                last_top_id = top_id
+                print(f"📦 Initiale Items gespeichert: {len(self.seen)}")
+                time.sleep(15)
+                continue
 
-                    self.seen.add(item_id)
-                    print("🔥 Neues Item erkannt:", item.get("title"))
-                    self.callback(item)
+            # 🔥 Neue Items
+            for item in items:
+                if item["id"] in self.seen:
+                    continue
+                self.seen.add(item["id"])
+                print("🔥 Neues Item:", item.get("title"))
+                self.callback(item)
 
-                if len(self.seen) > 500:
-                    self.seen = set(list(self.seen)[-300:])
+            # ⚡ Speed-Logik
+            if top_id != last_top_id:
+                delay = random.randint(6, 8)   # Markt aktiv
+                burst += 1
+            else:
+                delay = random.randint(15, 22) # ruhig
+                burst = 0
 
-                time.sleep(10)
+            last_top_id = top_id
 
-            except Exception as e:
-                print("❌ Sniper Fehler:", e)
-                time.sleep(10)
+            # 🧊 Burst-Cooldown
+            if burst >= 5:
+                print("🧊 Burst Cooldown 60s")
+                time.sleep(60)
+                burst = 0
+            else:
+                time.sleep(delay)
+
+        except Exception as e:
+            print("❌ Sniper Fehler:", e)
+            time.sleep(20)
